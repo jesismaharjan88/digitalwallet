@@ -47,11 +47,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shared", "Shared", "{C8E429
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common.Contracts", "Common.Contracts", "{99DA0D62-1FFF-EB8C-FA49-C94694C2E509}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common.Contracts", "src\Shared\Common.Contracts\Common.Contracts\Common.Contracts.csproj", "{F9D6879A-D050-4AAB-AB2D-C7733FC34C35}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common.Contracts", "src\Shared\Common.Contracts\Common.Contracts.csproj", "{F9D6879A-D050-4AAB-AB2D-C7733FC34C35}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common.Infrastructure", "Common.Infrastructure", "{DF71C681-1998-2218-2817-E548EDC519FB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common.Infrastructure", "src\Shared\Common.Infrastructure\Common.Infrastructure\Common.Infrastructure.csproj", "{57F970C9-D48E-4CFC-98CD-ADA8B8B733FF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common.Infrastructure", "src\Shared\Common.Infrastructure\Common.Infrastructure.csproj", "{57F970C9-D48E-4CFC-98CD-ADA8B8B733FF}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
 EndProject

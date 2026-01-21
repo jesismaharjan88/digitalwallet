@@ -20,6 +20,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\WalletService.Domain\WalletService.Domain.csproj" />
-    <ProjectReference Include="..\..\..\..\Shared\Common.Contracts\Common.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\Shared\Common.Contracts\Common.Contracts.csproj" />
   </ItemGroup>
 </Project>
