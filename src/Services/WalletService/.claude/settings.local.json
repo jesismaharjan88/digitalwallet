@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(dotnet build:*)",
+      "Bash(docker-compose ps:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(dotnet ef migrations add:*)",
+      "Bash(dotnet tool list:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
