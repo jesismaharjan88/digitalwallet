@@ -1,0 +1,248 @@
+version: '3.8'
+
+services:
+  # ============================================
+  # Infrastructure Services
+  # ============================================
+  
+  postgres-user:
+    image: postgres:16-alpine
+    container_name: postgres-user
+    environment:
+      POSTGRES_DB: userdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres-user-data:/var/lib/postgresql/data
+    networks:
+      - wallet-network
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U postgres]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-wallet:
+    image: postgres:16-alpine
+    container_name: postgres-wallet
+    environment:
+      POSTGRES_DB: walletdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+    ports:
+      - 5433:5432
+    volumes:
+      - postgres-wallet-data:/var/lib/postgresql/data
+    networks:
+      - wallet-network
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U postgres]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-payment:
+    image: postgres:16-alpine
+    container_name: postgres-payment
+    environment:
+      POSTGRES_DB: paymentdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+    ports:
+      - 5434:5432
+    volumes:
+      - postgres-payment-data:/var/lib/postgresql/data
+    networks:
+      - wallet-network
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U postgres]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - 6379:6379
+    volumes:
+      - redis-data:/data
+    networks:
+      - wallet-network
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - 5672:5672   # AMQP port
+      - 15672:15672 # Management UI
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - wallet-network
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ============================================
+  # Microservices
+  # ============================================
+
+  user-service:
+    build:
+      context: ./src/Services/UserService
+      dockerfile: Dockerfile
+    container_name: user-service
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Host=postgres-user;Database=userdb;Username=postgres;Password=postgres123
+      - JwtSettings__Secret=your-256-bit-secret-key-change-this-in-production-minimum-32-characters
+      - JwtSettings__Issuer=DigitalWalletUserService
+      - JwtSettings__Audience=DigitalWalletClients
+      - JwtSettings__ExpirationMinutes=60
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__Username=guest
+      - RabbitMQ__Password=guest
+    ports:
+      - 5001:80
+    depends_on:
+      postgres-user:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - wallet-network
+    restart: on-failure
+
+  wallet-service:
+    build:
+      context: ./src/Services/WalletService
+      dockerfile: Dockerfile
+    container_name: wallet-service
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Host=postgres-wallet;Database=walletdb;Username=postgres;Password=postgres123
+      - ConnectionStrings__Redis=redis:6379
+      - JwtSettings__Secret=your-256-bit-secret-key-change-this-in-production-minimum-32-characters
+      - JwtSettings__Issuer=DigitalWalletUserService
+      - JwtSettings__Audience=DigitalWalletClients
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__Username=guest
+      - RabbitMQ__Password=guest
+    ports:
+      - "5002:80"
+    depends_on:
+      postgres-wallet:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - wallet-network
+    restart: on-failure
+
+  payment-service:
+    build:
+      context: ./src/Services/PaymentService
+      dockerfile: Dockerfile
+    container_name: payment-service
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Host=postgres-payment;Database=paymentdb;Username=postgres;Password=postgres123
+      - JwtSettings__Secret=your-256-bit-secret-key-change-this-in-production-minimum-32-characters
+      - JwtSettings__Issuer=DigitalWalletUserService
+      - JwtSettings__Audience=DigitalWalletClients
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__Username=guest
+      - RabbitMQ__Password=guest
+    ports:
+      - "5003:80"
+    depends_on:
+      postgres-payment:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - wallet-network
+    restart: on-failure
+
+  notification-service:
+    build:
+      context: ./src/Services/NotificationService
+      dockerfile: Dockerfile
+    container_name: notification-service
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__Username=guest
+      - RabbitMQ__Password=guest
+      - EmailSettings__SmtpHost=smtp.gmail.com
+      - EmailSettings__SmtpPort=587
+      - EmailSettings__SenderEmail=noreply@digitalwallet.com
+      - EmailSettings__SenderName=Digital Wallet
+      - EmailSettings__Username=your-email@gmail.com
+      - EmailSettings__Password=your-app-password
+    ports:
+      - "5004:80"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - wallet-network
+    restart: on-failure
+
+  api-gateway:
+    build:
+      context: ./src/ApiGateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - Services__UserService=http://user-service:80
+      - Services__WalletService=http://wallet-service:80
+      - Services__PaymentService=http://payment-service:80
+      - Services__NotificationService=http://notification-service:80
+      - JwtSettings__Secret=your-256-bit-secret-key-change-this-in-production-minimum-32-characters
+      - JwtSettings__Issuer=DigitalWalletUserService
+      - JwtSettings__Audience=DigitalWalletClients
+    ports:
+      - "5000:80"
+    depends_on:
+      - user-service
+      - wallet-service
+      - payment-service
+      - notification-service
+    networks:
+      - wallet-network
+    restart: on-failure
+
+networks:
+  wallet-network:
+    driver: bridge
+
+volumes:
+  postgres-user-data:
+  postgres-wallet-data:
+  postgres-payment-data:
+  redis-data:
+  rabbitmq-data:
+
+
